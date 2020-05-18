@@ -136,9 +136,6 @@ print("\tBrightness Alteration -->", args.brightness)
 print("\tRotation -->", args.rotation)
 print("")
 
-avg_loss_per_epoch = []
-avg_scores_per_epoch = []
-avg_iou_per_epoch = []
 
 # Which validation images do we want
 val_indices = []
@@ -203,7 +200,6 @@ for epoch in range(args.epoch_start_i, args.num_epochs):
             st = time.time()
 
     mean_loss = np.mean(current_losses)
-    avg_loss_per_epoch.append(mean_loss)
 
     # Create directories if needed
     if not os.path.isdir("%s/%04d"%("checkpoints",epoch)):
@@ -275,12 +271,10 @@ for epoch in range(args.epoch_start_i, args.num_epochs):
 
         avg_score = np.mean(scores_list)
         class_avg_scores = np.mean(class_scores_list, axis=0)
-        avg_scores_per_epoch.append(avg_score)
         avg_precision = np.mean(precision_list)
         avg_recall = np.mean(recall_list)
         avg_f1 = np.mean(f1_list)
         avg_iou = np.mean(iou_list)
-        avg_iou_per_epoch.append(avg_iou)
 
         print("\nAverage validation accuracy for epoch # %04d = %f"% (epoch, avg_score))
         print("Average per class validation accuracies for epoch # %04d:"% (epoch))
@@ -303,37 +297,44 @@ for epoch in range(args.epoch_start_i, args.num_epochs):
     scores_list = []
 
 
-    fig1, ax1 = plt.subplots(figsize=(11, 8))
+    if epoch>0:
+       #print("Loading *.npy")
+       avg_scores_per_epoch_prev = np.load("%s/%04d/%s"%("checkpoints",epoch-1, 'avg_scores_per_epoch.npy'))
+       avg_loss_per_epoch_prev = np.load("%s/%04d/%s"%("checkpoints",epoch-1, 'avg_loss_per_epoch.npy'))
+       avg_iou_per_epoch_prev = np.load("%s/%04d/%s"%("checkpoints",epoch-1, 'avg_iou_per_epoch.npy'))
 
+       avg_scores_per_epoch = np.append(avg_scores_per_epoch_prev, avg_score)
+       avg_loss_per_epoch = np.append(avg_loss_per_epoch_prev, mean_loss)
+       avg_iou_per_epoch = np.append(avg_iou_per_epoch_prev, avg_iou)
+    else:
+       avg_scores_per_epoch = [avg_score]
+       avg_loss_per_epoch = [mean_loss]
+       avg_iou_per_epoch = [avg_iou]
+
+    #print("Saving *.npy")
+    np.save("%s/%04d/%s"%("checkpoints",epoch, 'avg_scores_per_epoch.npy'), avg_scores_per_epoch)
+    np.save("%s/%04d/%s"%("checkpoints",epoch, 'avg_loss_per_epoch.npy'), avg_loss_per_epoch)
+    np.save("%s/%04d/%s"%("checkpoints",epoch, 'avg_iou_per_epoch.npy'), avg_iou_per_epoch)
+	
+    fig1, ax1 = plt.subplots(figsize=(11, 8))
     ax1.plot(range(epoch+1), avg_scores_per_epoch)
     ax1.set_title("Average validation accuracy vs epochs")
     ax1.set_xlabel("Epoch")
     ax1.set_ylabel("Avg. val. accuracy")
-
-
     plt.savefig('accuracy_vs_epochs.png')
-
     plt.clf()
-
     fig2, ax2 = plt.subplots(figsize=(11, 8))
-
     ax2.plot(range(epoch+1), avg_loss_per_epoch)
     ax2.set_title("Average loss vs epochs")
     ax2.set_xlabel("Epoch")
     ax2.set_ylabel("Current loss")
-
     plt.savefig('loss_vs_epochs.png')
-
     plt.clf()
-
     fig3, ax3 = plt.subplots(figsize=(11, 8))
-
     ax3.plot(range(epoch+1), avg_iou_per_epoch)
     ax3.set_title("Average IoU vs epochs")
     ax3.set_xlabel("Epoch")
     ax3.set_ylabel("Current IoU")
-
     plt.savefig('iou_vs_epochs.png')
-
 
 
